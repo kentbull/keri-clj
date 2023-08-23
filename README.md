@@ -8,17 +8,11 @@ Download from https://github.com/kentbull/keri-clj
 
 ## Usage
 
-FIXME: explanation
 
 Run the project directly, via `:exec-fn`:
 
     $ clojure -X:run-x
-    Hello, Clojure!
-
-Run the project, overriding the name to be greeted:
-
-    $ clojure -X:run-x :name '"Someone"'
-    Hello, Someone!
+    Hello, Clojure!    
 
 Run the project directly, via `:main-opts` (`-m kentbull.keri-clj`):
 
@@ -52,7 +46,13 @@ Run that uberjar:
 
 ## Options
 
-FIXME: listing of options this app accepts.
+greet
+
+### Future options
+
+- init
+- incept
+
 
 ## Examples
 
@@ -62,9 +62,8 @@ FIXME: listing of options this app accepts.
 
 ...
 
-### Any Other Sections
-### That You Think
-### Might be Useful
+### Libraries
+[clj-matic](https://github.com/l3nz/cli-matic)
 
 ## License
 
