@@ -1,4 +1,4 @@
-(ns kentbull.keri-clj
+(ns keri.keri-clj
   (:require [cli-matic.core :refer [run-cmd]])
   (:gen-class))
 
@@ -30,3 +30,5 @@
   [& args]
   (run-cmd args CONFIGURATION)
   )
+
+(greet {:protocol "http" :port "port"})

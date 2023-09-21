@@ -1,4 +1,4 @@
-(ns kentbull.keri-clj-test
+(ns keri.keri-clj-test
   (:require [clojure.test :refer :all]
             [kentbull.keri-clj :refer :all]))
 
