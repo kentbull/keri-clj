@@ -5,6 +5,8 @@ based on the Python reference implementation [KERIpy](https://github.com/WebOfTr
 
 Client libraries will eventually include a SignifyCLJ styled after the Typescript client library [SignifyTS](https://github.com/WebOfTrust/signify-ts).
 
+For reference see the [KERI whitepaper](https://github.com/SmithSamuelM/Papers/blob/master/whitepapers/KERI_WP_2.x.web.pdf)
+
 ## Installation
 
 Download from https://github.com/kentbull/keri-clj
