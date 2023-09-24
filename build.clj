@@ -5,7 +5,7 @@
 
 (def lib 'net.clojars.kentbull/keri-clj)
 (def version "0.1.0-SNAPSHOT")
-(def main 'kentbull.keri-clj)
+(def main 'keri.keri-clj)
 (def class-dir "target/classes")
 
 (defn test "Run all the tests." [opts]
