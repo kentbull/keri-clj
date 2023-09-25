@@ -17,7 +17,7 @@
 
 ;; Version
 (defrecord versionage [major minor])
-(def version (->versionage 1 0))                           ; KERI Protocol Version
+(def vrsn (->versionage 1 0))                           ; KERI Protocol Version
 
 (def vrsn_1_0 (->versionage 1 0))                          ; KERI Protocol Version Specific
 (def vrsn_1_1 (->versionage 1 1))                          ; KERI Protocol Version Specific
@@ -42,15 +42,17 @@
   "
   ([]
    (versify {:proto   (:keri protos)
-             :version version
+             :version vrsn
              :kind    (:json serials)
              :size    0}))
-  ([{:keys [kind size ]} & {:keys [proto version] :or {proto (:keri protos) version version}}]
-   (when (not (some #{proto} (vals protos)))
-     (throw (ex-info (str "Invalid message identifier = " proto) {})))
-   (when (not (some #{kind} (vals serials)))
-     (throw (ex-info (str "Invalid serialization kind = " kind) {})))
-   (format verfmt proto (:major version) (:minor version) kind size)))
+  ([{:keys [proto version kind size]}]
+   (let [in-proto (if (nil? proto) (:keri protos) proto)
+         in-version (if (nil? version) vrsn version)]
+     (when (not (some #{proto} (vals protos)))
+       (throw (ex-info (str "Invalid message identifier = " proto) {})))
+     (when (not (some #{kind} (vals serials)))
+       (throw (ex-info (str "Invalid serialization kind = " kind) {})))
+     (format verfmt in-proto (:major in-version) (:minor in-version) kind size))))
 
 (defn deversify
   "Returns parts of a version string (vs)"
