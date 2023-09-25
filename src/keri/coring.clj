@@ -2,7 +2,6 @@
   "Core constants, records, interfaces, and functions used throughout"
   (:require
     [clojure.set :refer [union]]
-    [clojure.string :as str]
     [keri.kering :as kr]))
 
 
@@ -17,11 +16,10 @@
 (def ecdsa-256r1-seedbytes 32)
 (def ecdsa-256k1-seedbytes 32)
 
-(def vstrings {:json (kr/versify {:kind (:json kr/serials) :size 0})
-               :cbor (kr/versify {:kind (:cbor kr/serials) :size 0})
-               :mgpk (kr/versify {:kind (:mgpk kr/serials) :size 0})})
+(def vstrings {:json (kr/versify {:proto (:keri kr/protos) :version kr/vrsn :kind (:json kr/serials) :size 0})
+               :cbor (kr/versify {:proto (:keri kr/protos) :version kr/vrsn :kind (:cbor kr/serials) :size 0})
+               :mgpk (kr/versify {:proto (:keri kr/protos) :version kr/vrsn :kind (:mgpk kr/serials) :size 0})})
 
-vstrings
 
 
 
@@ -169,6 +167,48 @@ vstrings
    "9AAB" {:hs 4, :ss 4, :fs nil, :ls 2}
    })
 
+;
+; Base64 Utilities
+;
+
+; Mappings between Base64 encode index and decode characters
+(def b64char-by-idx-uppercase
+  "A set of the ASCII upper case characters indexed by their Base64URLSafe encoding code"
+  (into {} (for [index-char (map-indexed vector (map str (map char (range 65 91))))]
+              (let [index (first index-char)
+                    char (second index-char)]
+                {index char}))))
+
+(def b64char-by-idx-lowercase
+  "A set of the ASCII lower case characters indexed by their Base64URLSafe encoding code"
+  (into {} (for [index-char (map-indexed vector (map str (map char (range 97 123))))]
+              (let [index (first index-char)
+                    char (second index-char)]
+                {(+ 26 index) char}))))
+
+(def b64char-by-idx-numbers
+  "A set of the ASCII numbers indexed by their Base64URLSafe encoding code"
+  (into {} (for [index-char (map-indexed vector (map str (map char (range 48 58))))]
+              (let [index (first index-char)
+                    char (second index-char)]
+                {(+ 52 index) char}))))
+
+(def b64-end-chars {62 "-", 63 "_"})
+
+(def b64char-by-idx (merge b64-end-chars
+                      b64char-by-idx-uppercase
+                      b64char-by-idx-lowercase
+                      b64char-by-idx-numbers))
+(type b64char-by-idx)
+
+(defn reverse-map [m]
+  (map (fn [[k v]] [v k]) m))
+
+(def b64char-by-char (into {} (reverse-map b64char-by-idx)))
+
+(def bards
+  "Binary sextets of hard size (hs) for CESR encoding sizes.
+  Used for `bexfil`")
 
 (defprotocol IMatter
   "Cryptographic primitive material base class. Uses a fully qualified encoding for non-indexed primitives.
