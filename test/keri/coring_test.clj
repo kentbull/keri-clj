@@ -1,18 +1,111 @@
 (ns keri.coring-test
   (:require [clojure.test :refer :all]
-            [keri.coring :as kc]))
+            [keri.coring :as kc])
+  (:import (java.util Arrays)))
 
-(deftest int-to-b64-test
-  (testing "zero returns A"
-    (let [cs (kc/int-to-b64 0)]
-      (is (= "A" cs))))
+;(declare thrown? thrown-with-msg?)
+
+(deftest b64-conversions
+  "Base64URLSafe conversions to integers and back"
+  ; blanks
+  (testing "Empty string throws error when i is nil"
+    (let [result (try
+                   (kc/b64-to-int "")
+                   (catch IllegalArgumentException e
+                     e))]
+      (is (instance? IllegalArgumentException result))))
+  (testing "nil string throws error when i is nil"
+    (let [result (try
+                   (kc/b64-to-int nil)
+                   (catch IllegalArgumentException e
+                     e))]
+      (is (instance? IllegalArgumentException result))))
   (testing "zeroth char and zero padding returns blank"
     (let [cs (kc/int-to-b64 0 0)]
       (is (= "" cs))))
   (testing "Nil char and padding zero returns blank"
     (let [cs (kc/int-to-b64 nil 0)]
       (is (= "" cs))))
+  ; Zero, or character "A"
+  (testing "zero returns A"
+    (let [cs (kc/int-to-b64 0)
+          i (kc/b64-to-int cs)]
+      (is (= "A" cs))
+      (is (= i 0))))
+  (testing "bytes for 0 returned"
+    (let [cs (kc/int-to-b64b 0)
+          i (kc/b64-to-int cs)]
+      (is (Arrays/equals ^"[B" (.getBytes "A" "UTF-8") ^"[B" cs))
+      (is (= i 0))))
+  ; 27, or "b"
   (testing "lowercase 'b' returned for 27"
-    (let [cs (kc/int-to-b64 27)]
-      (is (= "b" cs))))
+    (let [cs (kc/int-to-b64 27)
+          i (kc/b64-to-int cs)]
+      (is (= "b" cs))
+      (is (= i 27))))
+  (testing "bytes lowercase 'b' returned for 27"
+    (let [cs (kc/int-to-b64b 27)
+          i (kc/b64-to-int cs)]
+      (is (Arrays/equals ^"[B" (.getBytes "b" "UTF-8") ^"[B" cs))
+      (is (= i 27))))
+  ; 27 with one byte of padding, "Ab"
+  (testing "lowercase 'b' with one byte of padding returned for 27 and length 2"
+    (let [cs (kc/int-to-b64 27 2)
+          i (kc/b64-to-int cs)]
+      (is (= "Ab" cs))
+      (is (= i 27))))
+  (testing "bytes lowercase 'b' returned for 27"
+    (let [cs (kc/int-to-b64b 27 2)
+          i (kc/b64-to-int cs)]
+      (is (Arrays/equals ^"[B" (.getBytes "Ab" "UTF-8") ^"[B" cs))
+      (is (= i 27))))
+  ; 80 = BQ
+  (testing "BQ equals 80"
+    (let [cs (kc/int-to-b64 80)
+          i (kc/b64-to-int cs)]
+      (is (= "BQ" cs))
+      (is (= i 80))))
+  (testing "bytes BQ equals 80"
+    (let [cs (kc/int-to-b64b 80)
+          i (kc/b64-to-int cs)]
+      (is (Arrays/equals ^"[B" (.getBytes "BQ" "UTF-8") ^"[B" cs))
+      (is (= i 80))))
+  ; 4095 = __
+  (testing "__ equals 4095"
+    (let [cs (kc/int-to-b64 4095)
+          i (kc/b64-to-int cs)]
+      (is (= "__" cs))
+      (is (= i 4095))))
+  (testing "bytes __ equals 4095"
+    (let [cs (kc/int-to-b64b 4095)
+          i (kc/b64-to-int cs)]
+      (is (Arrays/equals ^"[B" (.getBytes "__" "UTF-8") ^"[B" cs))
+      (is (= i 4095))))
+  ; 4096 = BAA
+  (testing "BAA equals 4096"
+    (let [cs (kc/int-to-b64 4096)
+          i (kc/b64-to-int cs)]
+      (is (= "BAA" cs))
+      (is (= i 4096))))
+  (testing "bytes BAA equals 4096"
+    (let [cs (kc/int-to-b64b 4096)
+          i (kc/b64-to-int cs)]
+      (is (Arrays/equals ^"[B" (.getBytes "BAA" "UTF-8") ^"[B" cs))
+      (is (= i 4096))))
+  ; Bd7 = 6011
+  (testing "Bd7 equals 6011"
+    (let [cs (kc/int-to-b64 6011)
+          i (kc/b64-to-int cs)]
+      (is (= "Bd7" cs))
+      (is (= i 6011))))
+  (testing "bytes Bd7 equals 6011"
+    (let [cs (kc/int-to-b64b 6011)
+          i (kc/b64-to-int cs)]
+      (is (Arrays/equals ^"[B" (.getBytes "Bd7" "UTF-8") ^"[B" cs))
+      (is (= i 6011))))
   )
+
+(deftest b64-to-b2-conversions
+  "Base64URLSafe to Base 2 (binary) and back"
+  (testing
+    (is (= 0 1))))

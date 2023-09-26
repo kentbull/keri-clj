@@ -227,6 +227,7 @@
   (re-matcher base64urlsafe-pattern s))
 
 (defn int-to-b64
+  "Convert an integer to the equivalent Base64URLSafe characters represented as a string"
   ([i]
    (int-to-b64 i 1))
   ([i l]
@@ -249,8 +250,28 @@
            padding (if (> padding-count 0)
                      (str/join (repeat padding-count "A"))
                      "")]
-       (str/join padding chars)))
-   ))
+       (apply str padding chars)))))
+
+(defn int-to-b64b
+  "Convert an integer to the equivalent Base64URLSafe characters represented as bytes"
+  ([i]
+   (int-to-b64b i 1))
+  ([i l]
+   (.getBytes (int-to-b64 i l) "UTF-8")))
+
+(defn b64-to-int [s]
+  "Converts a Base64URLSafe set of characters into it's integer equivalent.
+  Accepts a byte array or a string."
+  (let [s (if (instance? (Class/forName "[B") s)            ; "[B" is the byte array class name in the JVM
+            (String. ^"[B" s "UTF-8")                       ; "[B" byte array hint to disambiguate function signature
+            s)]
+    (if (empty? s)
+      (throw (IllegalArgumentException. "Empty string, conversion undefined."))
+      (reduce (fn [i [e c]]
+                (bit-or i (bit-shift-left (b64char-by-char (str c)) (* e 6))))
+        0
+        (map vector (range (count s)) (reverse s))))
+    ))
 
 (def bards
   "Binary sextets of hard size (hs) for CESR encoding sizes.
