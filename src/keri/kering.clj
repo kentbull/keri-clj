@@ -1,4 +1,6 @@
-(ns keri.kering)
+(ns keri.kering
+  "Constants and functions for the KERI protocol definition"
+  )
 
 (def falsey [false 0 nil "?0" "no" "false" "False" "off"])
 (def truthy [true 1 "?1" "yes" "true" "True" "on"])
@@ -74,8 +76,6 @@
               (throw (ex-info (str "Expected version = " version ", got " vers) {})))
             {:proto proto :version vers :kind kind :size size-decimal}
          )))))
-
-(deversify "KERI10JSON000000_")
 
 (def Ilks
   "KERI protocol packet (message) types"

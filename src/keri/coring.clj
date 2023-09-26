@@ -2,6 +2,7 @@
   "Core constants, records, interfaces, and functions used throughout"
   (:require
     [clojure.set :refer [union]]
+    [clojure.string :as str]
     [keri.kering :as kr]))
 
 
@@ -16,22 +17,22 @@
 (def ecdsa-256r1-seedbytes 32)
 (def ecdsa-256k1-seedbytes 32)
 
-(def vstrings {:json (kr/versify {:proto (:keri kr/protos) :version kr/vrsn :kind (:json kr/serials) :size 0})
-               :cbor (kr/versify {:proto (:keri kr/protos) :version kr/vrsn :kind (:cbor kr/serials) :size 0})
-               :mgpk (kr/versify {:proto (:keri kr/protos) :version kr/vrsn :kind (:mgpk kr/serials) :size 0})})
-
-
+(def vstrings
+  "Version strings for JSON, CBOR, MGPK with KERI and ACDC"
+  {:json (kr/versify {:proto (:keri kr/protos) :version kr/vrsn :kind (:json kr/serials) :size 0})
+   :cbor (kr/versify {:proto (:keri kr/protos) :version kr/vrsn :kind (:cbor kr/serials) :size 0})
+   :mgpk (kr/versify {:proto (:keri kr/protos) :version kr/vrsn :kind (:mgpk kr/serials) :size 0})})
 
 
 
 (def tierage
-  "Secret derivation security tier"
+  "Secret derivation security tiers for keypair generation"
   {:low  "low"
    :med  "med"
    :high "high"})
 
 (def matter-codex
-  "MatterCodex is codex code (stable) part of all matter derivation codes.
+  "MatterCodex is codex code (stable) part of all matter derivation codes used in CESR.
    Only provide defined codes.
    Undefined are left out so that inclusion(exclusion) via 'in' operator works.
   "
@@ -168,43 +169,88 @@
    })
 
 ;
-; Base64 Utilities
+; Base64 Utilities for Base64URLSafe characters
+; RFC: https://datatracker.ietf.org/doc/html/rfc4648#section-5
 ;
 
 ; Mappings between Base64 encode index and decode characters
 (def b64char-by-idx-uppercase
   "A set of the ASCII upper case characters indexed by their Base64URLSafe encoding code"
   (into {} (for [index-char (map-indexed vector (map str (map char (range 65 91))))]
-              (let [index (first index-char)
-                    char (second index-char)]
-                {index char}))))
+             (let [index (first index-char)
+                   char (second index-char)]
+               {index char}))))
 
 (def b64char-by-idx-lowercase
   "A set of the ASCII lower case characters indexed by their Base64URLSafe encoding code"
   (into {} (for [index-char (map-indexed vector (map str (map char (range 97 123))))]
-              (let [index (first index-char)
-                    char (second index-char)]
-                {(+ 26 index) char}))))
+             (let [index (first index-char)
+                   char (second index-char)]
+               {(+ 26 index) char}))))
 
 (def b64char-by-idx-numbers
   "A set of the ASCII numbers indexed by their Base64URLSafe encoding code"
   (into {} (for [index-char (map-indexed vector (map str (map char (range 48 58))))]
-              (let [index (first index-char)
-                    char (second index-char)]
-                {(+ 52 index) char}))))
+             (let [index (first index-char)
+                   char (second index-char)]
+               {(+ 52 index) char}))))
 
-(def b64-end-chars {62 "-", 63 "_"})
+(def b64-end-chars
+  "The last two Base64URLSafe characters"
+  {62 "-", 63 "_"})
 
-(def b64char-by-idx (merge b64-end-chars
-                      b64char-by-idx-uppercase
-                      b64char-by-idx-lowercase
-                      b64char-by-idx-numbers))
-(type b64char-by-idx)
+(def b64char-by-idx
+  "Map of {index char} Base64URLSafe characters indexed by character index to character"
+  (merge b64-end-chars
+    b64char-by-idx-uppercase
+    b64char-by-idx-lowercase
+    b64char-by-idx-numbers))
 
 (defn reverse-map [m]
+  "Swap keys and values"
   (map (fn [[k v]] [v k]) m))
 
-(def b64char-by-char (into {} (reverse-map b64char-by-idx)))
+(def b64char-by-char
+  "Map of {char index} Base64URLSafe characters indexed by character mapped to character index"
+  (into {} (reverse-map b64char-by-idx)))
+
+(def b64-chars
+  "All Base64URLSafe characters"
+  (vals b64char-by-idx))
+
+(def base64urlsafe-pattern
+  "Regex pattern matching any Base64URLSafe character"
+  #"^[A-Za-z0-9_-]+$")
+
+(defn reb64 [s]
+  "Returns a Base64URLSafe regular expression matcher"
+  (re-matcher base64urlsafe-pattern s))
+
+(defn int-to-b64
+  ([i]
+   (int-to-b64 i 1))
+  ([i l]
+   (if (and (nil? i) (zero? l))
+     ""
+     (let [chars (if (not (zero? l))
+                   (loop [d '()
+                          num i]
+                     ; Wraparound division with quotient
+                     (let [character (b64char-by-idx (mod num 64))
+                           updated (cons character d)]
+                       (if (= 0 (quot num 64))
+                         updated
+                         (recur
+                           updated
+                           (quot num 64))
+                         )))
+                   ())
+           padding-count (- l (count chars))
+           padding (if (> padding-count 0)
+                     (str/join (repeat padding-count "A"))
+                     "")]
+       (str/join padding chars)))
+   ))
 
 (def bards
   "Binary sextets of hard size (hs) for CESR encoding sizes.
