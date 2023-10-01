@@ -285,32 +285,32 @@
     bytearray))
 
 (defn code-b64-to-b2 [s]
-  "Decode to binary: returns conversion (decoding) of Base64URLSafe chars to Base2 bytes.
-   The number of total bytes returned equals the minimum number of octets sufficient
-   to hold the total converted concatenated sextets from s, with one sextet per each
-   Base64 decoded char of s.
-   Assumes no pad chars in s.
-   Sextets are left aligned with pad bits in last (rightmost) byte.
-   This is useful for decoding as bytes, code characters from the front of a Base64
-   encoded string of characters."
+  "Decode to binary: returns a lazy sequence of the conversion (decoding) of Base64URLSafe chars to Base2 bytes.
+
+  The number of total bytes returned equals the minimum number of octets sufficient
+  to hold the total converted concatenated sextets from s, with one sextet per each
+  Base64 decoded char of s.
+  Assumes no pad chars in s.
+  Sextets are left aligned with pad bits in last (rightmost) byte.
+  This is useful for decoding as bytes, code characters from the front of a Base64
+  encoded string of characters."
   (let [n (hlp/sceil (/ (* (count s) 3) 4))                 ; Minimum number of octets to hold all sextets
-        b2-bytes (-> s
-                 (b64-to-int)                               ; Returns a BigInteger
-                 (.shiftLeft (* 2 (mod (count s) 4))) ; Adds 2 bits of right zero padding for each sextet
-                   ;(BigInteger/valueOf)
-                 (.toByteArray)          ; Defaults to big-endian
-                 (strip-first-pad-byte)  ; Needed since BigInteger/toByteArray prepends a zero byte to ensure the byte
-                                         ; array's most significant byte is zero if the highest bit in the next byte is
-                                         ; set
-                 )]
-    (concat (repeat (- n (count b2-bytes)) (byte 0)) b2-bytes)
+        bytes (-> s
+                (b64-to-int)                                ; Returns a BigInteger
+                (.shiftLeft (* 2 (mod (count s) 4)))        ; Adds 2 bits of right zero padding for each sextet
+                (.toByteArray)                              ; Defaults to big-endian
+                (strip-first-pad-byte)                      ; Needed since toByteArray prepends zero byte ensuring byte
+                                                            ; array's most significant byte is zero if the highest bit
+                                                            ; in the next byte is set
+                )]
+    (concat (repeat (- n (count bytes)) (byte 0)) bytes)    ; Needed to ensure correct length like int.toBytes(n, 'big') in Python
     ))
 
 (defn bytes-to-big-int [b]
   "Converts a byte array to a number represented as a BigInteger."
   (BigInteger. 1 ^"[B" b))
 
-(defn code-b2-to-b64 [b, l]
+(defn code-b2-to-b64 [b l]
   "Encode to Base64URLSafe: returns conversion (encoding) of l Base2 sextets from front of b (a byte array) to
    Base64URLSafe characters. One char for each of l sextets from front (left) of b.
    This is useful for encoding as code characters, sextets from the front of a Base2 byte array (byte string).
@@ -321,7 +321,7 @@
             b)
         n (hlp/sceil (/ (* l 3) 4))]
     (if (> n (count b-bytes))
-      (throw (IllegalArgumentException. (str "Not enough bytes in " b " to nab " l " sextets."))))
+      (throw (IllegalArgumentException. (str "Not enough bytes in " b " to convert " l " sextets."))))
     (let [i (bytes-to-big-int (byte-array (take n b-bytes)))
           tbs (* 2 (mod l 4))                               ; Trailing bit size in bits - check if prepad bits are zero
           shifted-i (.shiftRight i tbs)                 ; right shift out trailing bits to make right aligned
@@ -329,10 +329,45 @@
       (int-to-b64 shifted-i l)
       )))
 
+(defn nab-sextets [b l]
+  "Return first l sextets from front (left) of b as bytes (byte string).
+  Length of bytes returned is minimum sufficient to hold all l sextets.
+  Last byte returned is right bit padded with zeros.
+  b is bytes or str"
+  (let [b-bytes (if (instance? String b)
+                  (.getBytes b "UTF-8")
+                  b)
+        n (hlp/sceil (/ (* l 3) 4))]
+    (if (> n (count b-bytes))
+      (throw (IllegalArgumentException. (str "Not enough bytes in " b " to nab " l " sextets."))))
+    (let [p (* 2 (mod l 4))                                 ; number of pad bits?
+          i (bytes-to-big-int (byte-array (take n b-bytes)))
+          sextet-bytes (-> i
+                         (.shiftRight p)                    ; strip off last bits
+                         (.shiftLeft p)                     ; pad with empty bits
+                         (.toByteArray)                     ; Defaults to big-endian
+                         (strip-first-pad-byte)             ; Needed since toByteArray prepends zero byte ensuring byte
+                                                            ; array's most significant byte is zero if the highest bit
+                                                            ; in the next byte is set
+                         )]
+      (concat (repeat (- n (count sextet-bytes)) (byte 0)) sextet-bytes) ; Needed to ensure correct length like int.toBytes(n, 'big') in Python
+      )))
+
+(defn bytes-to-vector [b]
+  (vec (map byte b)))
+
 
 (def bards
   "Binary sextets of hard size (hs) for CESR encoding sizes.
-  Used for `bexfil`")
+  Used for `bexfil`"
+  (into {}
+    (map (fn [entry]
+           (let [c (key (first entry))
+                 hs (val (first entry))]
+             [(bytes-to-vector (code-b64-to-b2 c)) hs]))
+      hards)))
+
+
 
 (defprotocol IMatter
   "Cryptographic primitive material base class. Uses a fully qualified encoding for non-indexed primitives.

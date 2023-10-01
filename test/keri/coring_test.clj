@@ -1,6 +1,7 @@
 (ns keri.coring-test
   (:require [clojure.test :refer :all]
-            [keri.coring :as kc])
+            [keri.coring :as kc]
+            [keri.helping :as hlp])
   (:import (java.util Arrays)))
 
 ;(declare thrown? thrown-with-msg?)
@@ -118,12 +119,70 @@
   ;
   ; Converting Base64URLSafe to base 2 binary
   ;
-  (testing "-BAC converts to bytes and back"
+  (testing "-BAC (0 pad bits) converts to bytes and back"
     (let [test-str "-BAC"
           bytes (kc/code-b64-to-b2 test-str)
-          chars (kc/code-b2-to-b64 bytes 4)]
+          chars (kc/code-b2-to-b64 bytes 4)
+          ; Convert bytes to BigInteger for octal comparison
+          int-from-bytes (BigInteger. 1 ^"[B" (byte-array bytes))
+          ; Shift
+          shifted-int (.shiftRight int-from-bytes (* 2 (mod (count test-str) 4)))
+          nabbed-bytes (kc/nab-sextets bytes 4)             ; first four characters
+          ]
       (is (= 3 (count bytes)))
-      (is (= test-str chars))))
+      (is (= test-str chars))
+      (is (= 076010002 int-from-bytes))
+      (is (= 076010002 shifted-int))
+      (is (= bytes nabbed-bytes))))
+  (testing "-BA (6 pad bits) converts to bytes and back and padding bits, with a remainder of 1, are handled correctly"
+    (let [test-str "-BA"
+          bytes (kc/code-b64-to-b2 test-str)
+          chars (kc/code-b2-to-b64 bytes 3)
+          int-from-bytes (BigInteger. 1 ^"[B" (byte-array bytes))
+          shifted-int (.shiftRight int-from-bytes (* 2 (mod (count test-str) 4)))
+          nabbed-bytes (kc/nab-sextets bytes 3)]
+      (is (= 3 (count bytes)))
+      (is (= test-str chars))
+      (is (= 076010000 int-from-bytes))
+      (is (= 0760100 shifted-int))
+      (is (= bytes nabbed-bytes))))
+  (testing "-B (4 pad bits) converts to bytes and back and padding bits, with a remainder of 1, are handled correctly"
+    (let [test-str "-B"
+          bytes (kc/code-b64-to-b2 test-str)
+          chars (kc/code-b2-to-b64 bytes 2)
+          int-from-bytes (BigInteger. 1 ^"[B" (byte-array bytes))
+          shifted-int (.shiftRight int-from-bytes (* 2 (mod (count test-str) 4)))
+          nabbed-bytes (kc/nab-sextets bytes 2)]
+      (is (= 2 (count bytes)))
+      (is (= test-str chars))
+      (is (= 0174020 int-from-bytes))
+      (is (= 07601 shifted-int))
+      (is (= bytes nabbed-bytes))))
+  (testing "-BACD (3 pad byte) converts to bytes and back and padding bits, with a remainder of 1, are handled correctly"
+    (let [test-str "-BACD"
+          bytes (kc/code-b64-to-b2 test-str)
+          chars (kc/code-b2-to-b64 bytes 5)
+          int-from-bytes (BigInteger. 1 ^"[B" (byte-array bytes))
+          shifted-int (.shiftRight int-from-bytes (* 2 (mod (count test-str) 4)))
+          nabbed-bytes (kc/nab-sextets bytes 5)]
+      (is (= 4 (count bytes)))
+      (is (= test-str chars))
+      (is (= 037004001014 int-from-bytes))
+      (is (= 07601000203 shifted-int))
+      (is (= bytes nabbed-bytes))))
+  (testing "- (2 pad bits) converts to bytes and back and padding bits, with a remainder of 1, are handled correctly"
+    (let [test-str "-"
+          bytes (kc/code-b64-to-b2 test-str)
+          chars (kc/code-b2-to-b64 bytes 1)
+          int-from-bytes (BigInteger. 1 ^"[B" (byte-array bytes))
+          shifted-int (.shiftRight int-from-bytes (* 2 (mod (count test-str) 4)))
+          nabbed-bytes (kc/nab-sextets bytes 1)]
+      (is (= 1 (count bytes)))
+      (is (= test-str chars))
+      (is (= 0370 int-from-bytes))
+      (is (= 076 shifted-int))
+      (is (= bytes nabbed-bytes))))
+  ; Test with a longer string
   (testing "CIOdpoavidvODJFPDKasdkfpSDPLKFJ converts to bytes and back"
     (let [test-str "CIOdpoavidvODJFPDKasdkfpSDPLKFJ"
           bytes (kc/code-b64-to-b2 test-str)
@@ -132,7 +191,20 @@
       (is (= test-str chars))))
   )
 
-(deftest b64-to-b2-conversions
-  "Base64URLSafe to Base 2 (binary) and back"
-  (testing
-    (is (= 0 1))))
+(deftest matter-tests
+  "Test that the setup code and usages of the IMatter protocol are correct"
+  (testing "Bards set membership check works"
+    (let [s "BAC"
+          bytes (kc/code-b64-to-b2 s)
+          nabbed (kc/nab-sextets bytes 1)]
+      (is (contains? kc/bards nabbed))))
+
+  (testing "Matter.Hards and Matter.Bards consistency"
+    ; kc/bards maps bytes of sextet of decoded first character of code with hard size of code
+    ; verify equivalents of items for kc/sizes and kc/bards
+    (doseq [entry kc/hards]
+      (let [skey (key (first entry))
+            sval (val (first entry))
+            ckey (kc/code-b64-to-b2 skey)]
+        (is (= (get kc/bards ckey) sval))))))
+
