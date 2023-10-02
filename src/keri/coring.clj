@@ -372,4 +372,53 @@
 (defprotocol IMatter
   "Cryptographic primitive material base class. Uses a fully qualified encoding for non-indexed primitives.
 
-  Implementations")
+  Implementations"
+  (initialize [this args-map]))
+
+(defrecord Matter [raw code rize qb64 qb64b qb2 strip]
+  IMatter
+  (initialize [this args-map]
+    "Validate as fully qualified
+    Parameters:
+      raw   (bytes)     : unqualified crypto material usable for crypto operations
+      code  (str)       : stable (hard) part of derivation code
+      rize  (int)       : raw size in bytes when variable sized material else None
+      qb64  (str, bytes): fully qualified crypto material Base64
+      qb64b (bytes)     : fully qualified crypto material Base64
+      qb2   (bytes)     : fully qualified crypto material Base2
+      strip (bool)      : True means strip (delete) matter from input stream bytearray after parsing qb64b or qb2.
+                          False means do not strip
+
+    Needs either (raw and code and optionally size and rsize)
+      or qb64b or qb64 or qb2
+    Otherwise raises EmptyMaterialError
+    When raw and code and optional size and rsize provided
+      then validate that code is correct for length of raw, size, rsize
+      and assign .raw
+    Else when qb64b or qb64 or qb2 provided extract and assign .raw and .code and .size and .rsize"
+    ; Initialization logic using args-map
+    ; return a modified version of this with assoc or merge
+    ))
+
+(defn create-matter [args-map]
+  (initialize (map->Matter {}) args-map))
+
+(defn default-matter []
+  (create-matter {:raw nil :code (:Ed25519N matter-codex) :rize nil
+                  :qb64 nil :qb64b nil :qb2 nil :strip false}))
+
+(defrecord Seqner [raw code rize qb64 qb64b qb2 strip sn snh]
+  IMatter
+  (initialize [this args-map]
+    ; initialization logic specific to Sequer using args-map
+    ; call Matter's initialize for shared logic
+    ; return modified version of this with assoc or merge
+    ))
+(defn create-seqner [args-map]
+  (initialize (map->Seqner {}) args-map))
+
+(defn default-seqner []
+  (create-seqner {:raw nil :code (:Salt_128 matter-codex) :rize nil
+                  :qb64 nil :qb64b nil :qb2 nil :strip false
+                  :sn nil :snh nil}))
+
